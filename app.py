@@ -1,8 +1,9 @@
-import streamlit as st
-from PIL import Image
-import requests
 
-API_KEY = "helloworld"  # free demo key (limited)
+import streamlit as st
+import requests
+from PIL import Image
+
+API_KEY = "helloworld"
 
 BAD_INGREDIENTS_BG = [
     "аспартам",
@@ -12,26 +13,21 @@ BAD_INGREDIENTS_BG = [
     "сорбинова киселина",
     "кофеин",
     "таурин",
-    "палмово масло",
-    "мононатриев глутамат",
+    "палмово масло"
 ]
 
-st.title("🧪 Проверка на съставки (без инсталации)")
+st.title("OCR Ingredient Checker")
 
-uploaded_file = st.file_uploader("Качи снимка", type=["png", "jpg", "jpeg"])
+uploaded_file = st.file_uploader("Upload image", type=["png", "jpg", "jpeg"])
 
-def extract_text_api(file):
+def extract_text(file):
     url = "https://api.ocr.space/parse/image"
-    response = requests.post(
+    r = requests.post(
         url,
         files={"file": file},
-        data={
-            "apikey": API_KEY,
-            "language": "bul",
-        },
+        data={"apikey": API_KEY, "language": "bul"}
     )
-    result = response.json()
-
+    result = r.json()
     try:
         return result["ParsedResults"][0]["ParsedText"]
     except:
@@ -39,20 +35,16 @@ def extract_text_api(file):
 
 if uploaded_file:
     image = Image.open(uploaded_file)
-    st.image(image, caption="Качено изображение", use_column_width=True)
+    st.image(image)
 
-    st.write("### 🔍 Разпознаване на текст...")
+    text = extract_text(uploaded_file).lower()
 
-    text = extract_text_api(uploaded_file).lower()
-
-    st.text_area("Разпознат текст", text, height=200)
-
-    st.write("### ⚠️ Намерени съставки")
+    st.text_area("Extracted text", text)
 
     found = [i for i in BAD_INGREDIENTS_BG if i in text]
 
     if found:
-        for item in found:
-            st.error(f"❌ {item}")
+        for i in found:
+            st.write(f"❌ {i}")
     else:
-        st.success("✅ Няма открити проблемни съставки")
+        st.write("✅ Nothing found")
