@@ -1,55 +1,58 @@
 import streamlit as st
 from PIL import Image
-import numpy as np
-import easyocr
+import requests
 
-st.set_page_config(page_title="OCR Ingredients Checker")
-
-@st.cache_resource
-def load_reader():
-    return easyocr.Reader(['bg', 'en'])
-
-reader = load_reader()
+API_KEY = "helloworld"  # free demo key (limited)
 
 BAD_INGREDIENTS_BG = [
-    "аспартам": "изкуствен подсладител",
-    "сукралоза": "изкуствен подсладител",
-    "ацесулфам калий": "изкуствен подсладител",
-    "натриев бензоат": "консервант",
-    "сорбинова киселина": "консервант",
-    "кофеин": "стимулант",
-    "таурин": "енергийна добавка",
-    "палмово масло": "спорна мазнина",
-    "мононатриев глутамат": "подобрител на вкуса"
+    "аспартам",
+    "сукралоза",
+    "ацесулфам",
+    "натриев бензоат",
+    "сорбинова киселина",
+    "кофеин",
+    "таурин",
+    "палмово масло",
+    "мононатриев глутамат",
 ]
 
-st.title("🧪 Проверка на съставки")
+st.title("🧪 Проверка на съставки (без инсталации)")
 
 uploaded_file = st.file_uploader("Качи снимка", type=["png", "jpg", "jpeg"])
 
-if uploaded_file:
+def extract_text_api(file):
+    url = "https://api.ocr.space/parse/image"
+    response = requests.post(
+        url,
+        files={"file": file},
+        data={
+            "apikey": API_KEY,
+            "language": "bul",
+        },
+    )
+    result = response.json()
+
     try:
-        image = Image.open(uploaded_file).convert("RGB")
-        st.image(image, caption="Качено изображение", use_column_width=True)
+        return result["ParsedResults"][0]["ParsedText"]
+    except:
+        return ""
 
-        st.write("### 🔍 Разпознаване на текст...")
+if uploaded_file:
+    image = Image.open(uploaded_file)
+    st.image(image, caption="Качено изображение", use_column_width=True)
 
-        img_array = np.array(image)
+    st.write("### 🔍 Разпознаване на текст...")
 
-        results = reader.readtext(img_array, detail=0)
-        extracted_text = " ".join(results).lower()
+    text = extract_text_api(uploaded_file).lower()
 
-        st.text_area("Разпознат текст", extracted_text, height=200)
+    st.text_area("Разпознат текст", text, height=200)
 
-        st.write("### ⚠️ Намерени съставки")
+    st.write("### ⚠️ Намерени съставки")
 
-        found = [i for i in BAD_INGREDIENTS_BG if i in extracted_text]
+    found = [i for i in BAD_INGREDIENTS_BG if i in text]
 
-        if found:
-            for item in found:
-                st.error(f"❌ {item}")
-        else:
-            st.success("✅ Няма открити проблемни съставки")
-
-    except Exception as e:
-        st.error(f"Грешка: {e}")
+    if found:
+        for item in found:
+            st.error(f"❌ {item}")
+    else:
+        st.success("✅ Няма открити проблемни съставки")
